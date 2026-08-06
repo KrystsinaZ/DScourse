@@ -6,7 +6,8 @@ import seaborn as sns
 
 from sklearn.metrics import ConfusionMatrixDisplay, RocCurveDisplay
 from dataclasses import dataclass
-# Клас-кантэйнер для даных і подпісаў
+
+# Клас-кантэйнер для дадзеных і подпісаў
 @dataclass
 class ChartConfig:
     df: pd.DataFrame
@@ -21,7 +22,7 @@ class ChartConfig:
 def plot_scatter_clean(config: ChartConfig):
     plt.figure(figsize=(10, 6))
     
-    # Усе даныя бяруцца з аб'екта config праз кропку
+    # Усе дадзеныя бяруцца з аб'екта config праз кропку
     sns.scatterplot(
         data=config.df, 
         x=config.x_col, 
@@ -34,15 +35,15 @@ def plot_scatter_clean(config: ChartConfig):
     plt.show()
 
 # Визуализация истинных и предсказанных значений
-def plot_predictions(y_true, y_pred, num_points, type_vis_method):
+def plot_predictions(y_true, y_pred, num_points, target_name, type_vis_method):
 
     if type_vis_method == 1:
         plt.figure(figsize=(10, 6))
         plt.scatter(range(num_points), y_true[:num_points], color='blue', label='Истинные значения')
         plt.scatter(range(num_points), y_pred[:num_points], color='red', label='Предсказанные значения')
         plt.xlabel('Индекс')
-        plt.ylabel('Значение charges')
-        plt.title(f'Истинные и предсказанные значения charges (первые {num_points} точек)')
+        plt.ylabel('Значение {target_name}')
+        plt.title(f'Истинные и предсказанные значения {target_name}(первые {num_points} точек)')
         plt.legend()
         plt.show()
 
@@ -54,20 +55,21 @@ def plot_predictions(y_true, y_pred, num_points, type_vis_method):
         plt.plot(range(num_points), y_pred[:num_points], label='Предсказанные значения', marker='x')
         plt.xlabel('Наблюдения')
         plt.ylabel('Значения')
-        plt.title('Сравнение истинных и предсказанных значений')
+        plt.title('Сравнение истинных и предсказанных значений {target_name}')
         plt.legend()
         plt.grid(True)
         plt.show()
     
 def plot_cl_results(X, y, feature_names, target_names):
-    # Визуализация при помощи matplotlib
-    #hue='species'
+    
     # Создание DataFrame для удобного отображения данных
     df = pd.DataFrame(data=X, columns=feature_names)
-    df['species'] = pd.Categorical.from_codes(y, target_names)
+
+    #  передаем список вместо строки target_name
+    df[target_names] = pd.Categorical.from_codes(y, categories=['Died', 'Survived'])
 
     # Построение парных графиков при помощи sns
-#    sns.pairplot(df, hue='species')
+    sns.pairplot(df, hue=target_names)
     plt.show()    
 
 

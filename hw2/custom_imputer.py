@@ -1,13 +1,14 @@
 import numpy as np
 import pandas as pd
 from sklearn.impute import SimpleImputer
+
 from sklearn.linear_model import LinearRegression
 from sklearn.preprocessing import StandardScaler
 from sklearn.preprocessing import OneHotEncoder
 from sklearn.compose import ColumnTransformer
 from sklearn.pipeline import Pipeline
-from sklearn.experimental import enable_iterative_imputer  # Абавязкова для IterativeImputer
-        
+# from sklearn.experimental import enable_iterative_imputer  # Абавязкова для IterativeImputer
+# from sklearn.impute import IterativeImputer        
 
 
 import pandas as pd
@@ -18,9 +19,9 @@ def analyze_missing_data(df: pd.DataFrame):
     missing_pct = 100 * missing / len(df)
     analysis = pd.concat([missing, missing_pct], axis=1, keys=["Total", "%"])
     # просценькі вывад без лішняга
-    print("--- Аналіз пропускаў у даных ---")
-    print(analysis[analysis["Total"] > 0])
-    print("-" * 32)
+    #print("--- Аналіз пропускаў у дадзеных ---")
+    #print(analysis[analysis["Total"] > 0])
+    #print("-" * 32)
 
     return analysis 
 
@@ -49,7 +50,10 @@ def print_missing_report(df: pd.DataFrame, analysis_df: pd.DataFrame):
 def preprocess_pipeline(
     X: pd.DataFrame, numeric_features, categorical_freq_features, categorical_const_features, custom_reg_col: str = None, reg_predictors: list = None
 ):
-     
+    # X: pd.DataFrame, numeric_features, 
+    # categorical_freq_features, categorical_const_features, 
+    # custom_reg_col: str = None, reg_predictors: list = None
+         
     #Поўны цыкл падрыхтоўкі і маштабавання дадзеных.
     X = X.copy()
 
@@ -58,7 +62,7 @@ def preprocess_pipeline(
     
     if not (custom_reg_col and reg_predictors):
           
-        # 1. Пайплайн для лічбавых даных: спачатку запаўненне медыянай, потым маштабаванне
+        # 1. Пайплайн для лічбавых дадзеных: спачатку запаўненне медыянай, потым маштабаванне
         numeric_transformer = Pipeline(steps=[
             ('imputer', SimpleImputer(strategy='median')),
             ('scaler', StandardScaler())  # Дадалі маштабаванне
@@ -96,6 +100,7 @@ def preprocess_pipeline(
 
     else:
         # месца пад лінейную рэгрэсію для 'age'
+        #X_processed = reg (X)
         X_processed = X
         print("такі рэжым не наладжаны. Пропускі не запоўненыя, засталіся без масштабавання!")
         
@@ -144,8 +149,8 @@ def preprocess_pipeline(
         return df_copy
 
 """
-
-"""def reg (X):
+"""
+def reg (X):
     # =====================================================================
     # ЭТАП 1: Падрыхтоўка базавых прыкмет (без 'age')
     # =====================================================================
@@ -153,8 +158,6 @@ def preprocess_pipeline(
     # Спісы слупкоў
     numeric_reg_features = ['fare']            # 'pclass' звычайна катэгорыя ці парадкавы лік
     categorical_reg_features = ['pclass', 'sex']
-
-    #categorical_reg_features
 
     # Ствараем звычайныя трансформеры для базавых прыкмет
     num_transformer = Pipeline(steps=[
@@ -170,8 +173,8 @@ def preprocess_pipeline(
     # Збіраем базавы прэпрацэсар (ён пакуль НЕ чапае 'age', астатнія слупкі прапускае)
     base_preprocessor = ColumnTransformer(
         transformers=[
-            ('num', num_transformer, numeric_features),
-            ('cat', cat_transformer, categorical_features)
+            ('num', num_transformer, numeric_reg_features),
+            ('cat', cat_transformer, categorical_reg_features)
         ],
         remainder='passthrough' # Пакідае 'age' у канцы матрыцы без зменаў
     )
@@ -206,10 +209,12 @@ def preprocess_pipeline(
         ('scale_age', final_scaler)               # 3. Маштабуем знойдзены age
     ])
 
-    # Запуск усяго ланцужка на даных
+    # Запуск усяго ланцужка на дадзеных
+    
     X_processed = full_preprocessor.fit_transform(X)
 
     print("Пропускі ў 'age' паспяхова прадказаныя лінейнай рэгрэсіяй!")
+   
+    return X_processed, full_preprocessor
 
-    
-return X_processed"""
+"""

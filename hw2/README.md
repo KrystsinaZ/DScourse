@@ -9,24 +9,25 @@
 
 5. Датасет выбрать самостоятельно исходя из интересов
 
-## Содержание
+# Содержание  
+
 1. data_loader.py - для загрузки данных из CSV, json, openML:  
 load_from_csv  
 load_from_json  
 load_from_openml
 
-2. visualizer.py
-
-plot_classification_results(type_vis_method = 2) гистограммы, 
-plot_predictions линейные графики 
+2. visualizer.py  
+plot_classification_results(type_vis_method = 2) гистограммы,  
+plot_predictions линейные графики  
 plot_scatter_clean - диаграмма рассеяния
 
+
 3. custom_imputer.py:  
-analyze_missing_data **метод для подсчета пустых или пропущенных значений** в каждом столбце DataFrame  
-print_missing_report **метод для вывода отчета с информацией о пропущенных значениях**.
+analyze_missing_data - **метод для подсчета пустых или пропущенных значений** в каждом столбце DataFrame  
+print_missing_report - **метод для вывода отчета с информацией о пропущенных значениях**.
 
 def preprocess_pipeline
-Реализуйте **метод заполнения пропущенных значений** (например: средним, медианой или наиболее частым значением).
+**метод заполнения пропущенных значений**:  средним, медианой и наиболее частым значением.
 
 4. Модули, которые мы рассмотрели на лекции:  
 - ml_module.py
