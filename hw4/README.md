@@ -155,7 +155,7 @@ output/
 ### 1. Кланаваць рэпазіторы
 
 ```bash
-git clone https://github.com/KrystsinaZ/DScourse//hw4.git
+git clone https://github.com/KrystsinaZ/DScourse/tree/main/hw4
 cd hw4
 ```
 

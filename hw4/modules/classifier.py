@@ -1,11 +1,14 @@
-"""Модели, CV, Optuna/Hyperopt."""
 from __future__ import annotations
 
 import warnings
-from lightgbm.basic import LightGBMError
+# Глушым стандартны клас папярэджанняў Python
+warnings.filterwarnings("ignore", category=DeprecationWarning)
+
+# import warnings
+# from lightgbm.basic import LightGBMError
 
 # Спецыяльны фільтр, які цалкам ігнаруе LGBMDeprecationWarning
-warnings.filterwarnings("ignore", category=UserWarning, module="lightgbm")
+# warnings.filterwarnings("ignore", category=UserWarning, module="lightgbm")
 
 import numpy as np
 import pandas as pd
@@ -109,15 +112,18 @@ class ClassifierBench:
                 "KNN": KNeighborsClassifier(
                     n_neighbors=5,
                     weights="distance",  # Дапамагае пры дысбалансе, улічвае адлегласць
+                    algorithm="kd_tree",
                     n_jobs=-1
                 ),
                 "DecisionTree": DecisionTreeClassifier(
                     class_weight="balanced",
-                    max_depth=4, #6,              # Абмяжоўваем глыбіню
+                    max_depth=5, #6,              # Абмяжоўваем глыбіню
                     random_state=seed,
                 ),
                 "ExtraTrees": ExtraTreesClassifier(
-                    n_estimators=150,
+                    n_estimators=100,
+                    # max_depth=5,
+                    # min_samples_leaf=10,
                     class_weight="balanced",
                     n_jobs=-1,
                     random_state=seed,
@@ -145,26 +151,12 @@ class ClassifierBench:
                     
                     # 6. Спецыфіка вашай бізнес-задачы
                     class_weight="balanced",     # Абсалютна крытычна для дысбалансу класаў! Падымае Recall і PR-AUC
+                    eval_metric="average_precision",
                     random_state=seed,           # Фіксаваная пераменная сіда (напрыклад, 42)
                     n_jobs=-1,                   # Першая CV павінна выкарыстоўваць усе ядры на максімальнай хуткасці
                     verbosity=-1,                # Прыбіраем тэхнічныя папярэджанні з кансолі
                 ),               
-                
-                # "XGBoost": XGBClassifier(
-                #     n_estimators=400,
-                #     max_depth=4,
-                #     learning_rate=0.05,
-                #     min_child_weight=1,
-                #     subsample=0.8,
-                #     colsample_bytree=0.8,
-                #     reg_alpha=0.0,
-                #     reg_lambda=1.0,
-                #     scale_pos_weight=scale_pos,
-                #     eval_metric="aucpr",
-                #     n_jobs=-1,
-                #     random_state=seed,
-                #     ),
-                # 
+                 
                 "XGBoost": XGBClassifier(
                     n_estimators=400,
                     max_depth=4,                 # Абмежаванне глыбіні для таблічных дадзеных
@@ -357,6 +349,7 @@ class ClassifierBench:
                     "clf__eval_metric": lgb_metrics,#"average_precision",
                     "clf__callbacks": callbacks,
                 }
+                # warnings.filterwarnings("ignore", category=LGBMDeprecationWarning)
                 model.fit(x_train, y_train, **fit_kw)
             else:
                 fit_kw = {
@@ -764,63 +757,63 @@ class ClassifierBench:
        
         return table
 
-    def collect_learning_curves(self, x: pd.DataFrame, y: pd.Series) -> dict[str, dict[str, Any]]:
-        """
-        Вылічвае 5-фолдавыя крывыя навучання, аўтаматычна выкарыстоўваючы 
-        структуру прэпрацэсараў з паспяхова выкананай cross_validate_newV.
-        """
+    # def collect_learning_curves(self, x: pd.DataFrame, y: pd.Series) -> dict[str, dict[str, Any]]:
+    #     """
+    #     Вылічвае 5-фолдавыя крывыя навучання, аўтаматычна выкарыстоўваючы 
+    #     структуру прэпрацэсараў з паспяхова выкананай cross_validate_newV.
+    #     """
 
-        # Правераем, ці быў ужо запушчаны асноўны працэс CV
-        if not hasattr(self, "fitted_pipelines") or not self.fitted:
-            raise ValueError(
-                "Спачатку трэба запусціць cross_validate_newV, каб сабраць структуру пайплайнаў!"
-            )
+    #     # Правераем, ці быў ужо запушчаны асноўны працэс CV
+    #     if not hasattr(self, "fitted_pipelines") or not self.fitted:
+    #         raise ValueError(
+    #             "Спачатку трэба запусціць cross_validate_newV, каб сабраць структуру пайплайнаў!"
+    #         )
 
-        curves_results = {}
-        kf = StratifiedKFold(n_splits=5, shuffle=True, random_state=self.random_state)
+    #     curves_results = {}
+    #     kf = StratifiedKFold(n_splits=5, shuffle=True, random_state=self.random_state)
 
-        for name, fitted_pipe in self.fitted.items():
-            if "dummy" in name.lower():
-                continue
+    #     for name, fitted_pipe in self.fitted.items():
+    #         if "dummy" in name.lower():
+    #             continue
 
-            print(f"[Learning Curve] Вылічэнне для {name} на аснове існуючага Pipeline...")
+    #         print(f"[Learning Curve] Вылічэнне для {name} на аснове існуючага Pipeline...")
             
-            pipe_template = clone(fitted_pipe)
+    #         pipe_template = clone(fitted_pipe)
 
-            # 2. Калі гэта бустынг, цалкам адключаем early_stopping_rounds для гэтай працэдуры
-            if hasattr(pipe_template, "named_steps") and "clf" in pipe_template.named_steps:
-                clf_model = pipe_template.named_steps["clf"]
+    #         # 2. Калі гэта бустынг, цалкам адключаем early_stopping_rounds для гэтай працэдуры
+    #         if hasattr(pipe_template, "named_steps") and "clf" in pipe_template.named_steps:
+    #             clf_model = pipe_template.named_steps["clf"]
                 
-                # Скідваем параметры ранняга прыпынку, каб яны не патрабавалі eval_set
-                if hasattr(clf_model, "set_params"):
-                    # Для XGBoost і LightGBM Scikit-Learn API
-                    current_params = clf_model.get_params()
+    #             # Скідваем параметры ранняга прыпынку, каб яны не патрабавалі eval_set
+    #             if hasattr(clf_model, "set_params"):
+    #                 # Для XGBoost і LightGBM Scikit-Learn API
+    #                 current_params = clf_model.get_params()
                     
-                    if "early_stopping_rounds" in current_params and current_params["early_stopping_rounds"] is not None:
-                        clf_model.set_params(early_stopping_rounds=None)
+    #                 if "early_stopping_rounds" in current_params and current_params["early_stopping_rounds"] is not None:
+    #                     clf_model.set_params(early_stopping_rounds=None)
                     
-                    # Прыбіраем калбэкі LightGBM, калі яны зашыліся ў параметры
-                    if "callbacks" in current_params and current_params["callbacks"] is not None:
-                        clf_model.set_params(callbacks=None)
+    #                 # Прыбіраем калбэкі LightGBM, калі яны зашыліся ў параметры
+    #                 if "callbacks" in current_params and current_params["callbacks"] is not None:
+    #                     clf_model.set_params(callbacks=None)
 
-            train_sizes, train_scores, val_scores, *_= learning_curve(
-                estimator=pipe_template,  # Перадаем ачышчаную ад ранніх стопаў копію структуры вашага Pipeline
-                X=x,
-                y=y.to_numpy().astype(int),
-                cv=kf,
-                scoring="average_precision", 
-                train_sizes=np.linspace(0.1, 1.0, 5), 
-                n_jobs=-1, 
-                random_state=self.random_state
-            )
+    #         train_sizes, train_scores, val_scores, *_= learning_curve(
+    #             estimator=pipe_template,  # Перадаем ачышчаную ад ранніх стопаў копію структуры вашага Pipeline
+    #             X=x,
+    #             y=y.to_numpy().astype(int),
+    #             cv=kf,
+    #             scoring="average_precision", 
+    #             train_sizes=np.linspace(0.1, 1.0, 5), 
+    #             n_jobs=-1, 
+    #             random_state=self.random_state
+    #         )
 
-            curves_results[name] = (
-                train_sizes,
-                train_scores,
-                val_scores
-            )
+    #         curves_results[name] = (
+    #             train_sizes,
+    #             train_scores,
+    #             val_scores
+    #         )
 
-        return curves_results
+    #     return curves_results
 
 
     def get_single_learning_curve_split(
@@ -908,12 +901,18 @@ class ClassifierBench:
             gap = train_mean_final - val_mean_final
             
             # Вашы правільныя развагі і вердыкты:
+            # if gap < 0.05:
+            #     status = "✓ Стабільная (gap < 0.05)"
+            # elif gap < 0.10:
+            #     status = "⚠️ Невялікае перанавучанне"
+            # else:
+            #     status = "Моцнае перанавучанне"
             if gap < 0.05:
-                status = "✓ Стабільная (gap < 0.05)"
+                status = "(gap < 0.05)"
             elif gap < 0.10:
-                status = "⚠️ Невялікае перанавучанне"
+                status = "gap < 0.10"
             else:
-                status = "Моцнае перанавучанне"
+                status = "gap >= 0.10"
 
             analysis_list.append({
                 "Мадэль": model_name,
@@ -1010,6 +1009,9 @@ class ClassifierBench:
 
                 # 3. Вылічэнне кропак для ліній графіку (25%, 50%, 75%, 100%)
                 # n_jobs=1 ратуе ад завісання Tkinter
+                # ратуемся ад ворнінгу
+                # warnings.filterwarnings("ignore", category=LGBMDeprecationWarning)
+
                 train_sizes, train_scores, val_scores, *_ = learning_curve(
                     estimator=pipe_template, 
                     X=x, 
@@ -1060,12 +1062,18 @@ class ClassifierBench:
 
                 # Вызначэнне вердыкту
                 final_check_gap = gap_es if gap_es is not None else gap_100
+                # if final_check_gap < 0.05:
+                #     verdict = "✓ Стабільная мадэль (gap < 0.05)"
+                # elif final_check_gap < 0.10:
+                #     verdict = "⚠️ Невялікае перанавучанне"
+                # else:
+                #     verdict = "Моцнае перанавучанне"
                 if final_check_gap < 0.05:
-                    verdict = "✓ Стабільная мадэль (gap < 0.05)"
+                    verdict = "(gap < 0.05)"
                 elif final_check_gap < 0.10:
-                    verdict = "⚠️ Невялікае перанавучанне"
+                    verdict = "gap < 0.10"
                 else:
-                    verdict = "Моцнае перанавучанне"
+                    verdict = "gap > 0.10"
 
                 # Захоўваем усё ў выніковы слоўнік
                 curves_results[name] = {
@@ -1140,12 +1148,20 @@ class ClassifierBench:
 
             # Выніковы вердыкт (строга па рабочым гэпе, калі ён ёсць, іначай)
             final_gap = gap_es if best_iters else gap_100
+            # if final_gap < 0.05:
+            #     verdict = "✓ Стабільная мадэль (gap < 0.05)"
+            # elif final_gap < 0.10:
+            #     verdict = "⚠️ Невялікае перанавучанне"
+            # else:
+            #     verdict = "Моцнае перанавучанне"
+
             if final_gap < 0.05:
-                verdict = "✓ Стабільная мадэль (gap < 0.05)"
+                verdict = "(gap < 0.05)"
             elif final_gap < 0.10:
-                verdict = "⚠️ Невялікае перанавучанне"
+                verdict = "gap < 0.10"
             else:
-                verdict = "Моцнае перанавучанне"
+                verdict = "gap > 0.10"
+
 
             analysis_list.append({
                 "Мадэль": model_name,
@@ -1233,15 +1249,15 @@ class ClassifierBench:
             print(f"  -> Новы Сярэдні Val PR-AUC:   {mean_val:.4f}")
             print(f"  => Новы выніковы Gap:          {new_gap:.4f}")
             
-            if new_gap < 0.05:
-                print("  => Вердыкт: ✓ Перанавучанне цалкам ПЕРАМАГЛІ (gap < 0.05)")
-            elif new_gap < 0.10:
-                print("  => Вердыкт: ⚠️ Невялікае бяспечнае перанавучанне (gap < 0.10)")
-            else:
-                print("  => Вердыкт: ✗ Мадэль усё яшчэ схільная да перанавучання")
-            print("-" * 55)
+        #     if new_gap < 0.05:
+        #         print("  => Вердыкт: ✓ Перанавучанне цалкам ПЕРАМАГЛІ (gap < 0.05)")
+        #     elif new_gap < 0.10:
+        #         print("  => Вердыкт: ⚠️ Невялікае бяспечнае перанавучанне (gap < 0.10)")
+        #     else:
+        #         print("  => Вердыкт: ✗ Мадэль усё яшчэ схільная да перанавучання")
+        #     print("-" * 55)
             
-        print("="*75 + "\n")
+        # print("="*75 + "\n")
         
         # 6. Абавязкова вяртаем класу яго зыходны поўны слоўнік мадэлей (рэстаўрацыя стану)
         self.models = original_models_dict
@@ -1459,6 +1475,35 @@ class ClassifierBench:
         else:
             scaler = StandardScaler()
 
+        # 3. Бяспечна мяняем ТОЛЬКІ скалер праз set_params
+        # У ColumnTransformer да любога трансфарматара можна звярнуцца па шаблоне: <імя_кроку>__<параметр>
+        preprocessor_clone.set_params(num=scaler)
+                
+        return preprocessor_clone
+
+    def _get_adapted_preprocessor2(self, model_name: str) -> Any:
+        """
+        УНУТРАНЫ АДАПТАТАР: прымае імя мадэлі і вяртае індывідуальна 
+        настроены, чысты і абнулены клон self.preprocessor.
+        """
+
+        if self.preprocessor is None:
+            raise AttributeError("[Benchmark Error] self.preprocessor не быў ініцыялізаваны з main.py.")
+
+        # 1. Ствараем абсалютна свежы, сляпы клон эталоннага прэпрацэсара
+        preprocessor_clone = clone(self.preprocessor)
+        
+        # 2. Вызначаем патрэбны матэматычны скалер паводле прыроды сямействаў мадэлей
+        ROBUST_REQUIRED = ["KNN", "SVM"]
+        NO_SCALE_REQUIRED = ["DecisionTree", "ExtraTrees", "LightGBM", "XGBoost", "CatBoost"]
+
+        if any(m in model_name for m in NO_SCALE_REQUIRED):
+            scaler = 'passthrough'
+        elif any(m in model_name for m in ROBUST_REQUIRED):
+            scaler = RobustScaler()
+        else:
+            scaler = StandardScaler()
+
         raw_transformers = self.preprocessor.get_params().get("transformers", [])
         
         if not raw_transformers:
@@ -1588,6 +1633,9 @@ class ClassifierBench:
 
         # 3. Вылічэнне кропак для ліній графіку праз убудаваны validation_curve
         # Звяртаемся да параметру мадэлі ўнутры Pipeline праз 'model__'
+
+        # warnings.filterwarnings("ignore", category=LGBMDeprecationWarning)
+        
         train_scores, val_scores = validation_curve(
             estimator=pipe_template, # type: ignore[reportArgumentType]
             X=x,
@@ -1606,11 +1654,11 @@ class ClassifierBench:
         
         # 4. Вызначэнне вердыкту па велічыні перанавучання (Gap)
         if gap_100 < 0.05:
-            verdict = "✓ Стабільная мадэль (gap < 0.05)"
+            verdict = "(gap < 0.05)"
         elif gap_100 < 0.10:
-            verdict = "⚠️ Невялікае перанавучанне"
+            verdict = "gap < 0.10"
         else:
-            verdict = "Моцнае перанавучанне"
+            verdict = "gap >= 0.10"
             
         # 5. Захоўваем усё ў лаканічны слоўнік
         curves_results[model_key] = {

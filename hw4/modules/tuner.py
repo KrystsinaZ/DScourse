@@ -43,13 +43,18 @@ class BayesianTuner:
         # Вызначаем scale_pos_weight бяспечна з мінулага пайплайна
         base_pipeline = self.bench.fitted[name]
         scale_pos = base_pipeline.named_steps["clf"].get_params().get("scale_pos_weight", 1.0)
+
+        # max_depth = trial.suggest_int("max_depth", 3, 6)
+        # # num_leaves выбіраецца з улікам абранай глыбіні, але не больш за 17
+        # max_leaves = min(17, 2**max_depth) 
+        # num_leaves = trial.suggest_int("num_leaves", 2, max_leaves)
         
         # 1. Вызначаем адаптыўную прастору (выпраўлена праверка імёнаў праз .lower())
         if "light" in name.lower():
             params = {
                 "n_estimators": 500,  
                 "learning_rate": trial.suggest_float("learning_rate", 0.01, 0.05, log=True),
-                "num_leaves": trial.suggest_int("num_leaves", 10, 21),
+                "num_leaves": trial.suggest_int("num_leaves", 2, 17),
                 "max_depth": trial.suggest_int("max_depth", 3, 6),
                 "min_child_samples": trial.suggest_int("min_child_samples", 20, 100),
                 "reg_alpha": trial.suggest_float("reg_alpha", 1e-3, 5.0, log=True),

@@ -519,6 +519,7 @@ class DataVisualizer:
         filename: str = "models_boxplot.png"
     ) -> Path:
         """Будуе Box-plot для параўнання стабільнасці мадэляў."""
+
         # 1. Ператвараем слоўнік метрык у табліцу DataFrame
         data_list = []
         for model_name, scores in fold_scores.items():
@@ -536,14 +537,23 @@ class DataVisualizer:
         # custom_colors = [BLUE, TEAL, AMBER, CORAL, LAVENDER, SLATE]
         # active_colors = custom_colors[:len(fold_scores)]
     #-----------------
+        # df_scores = pd.DataFrame(data_list)
+        
+        # # 🚨 ВЫПРАЎЛЕННЕ: Вылічаем колькасць мадэляў strictly пасля адсеўкі dummy-класіфікатара
+        # n_unique_models = df_scores["Мадэль"].nunique()
+        
+        # # Ствараем палітру для мадэляў
+        # custom_colors = [BLUE, TEAL, AMBER, CORAL, LAVENDER, SLATE]
+        # active_colors = custom_colors[:n_unique_models] # бярэм дакладную колькасць колераў
+        
         df_scores = pd.DataFrame(data_list)
         
-        # 🚨 ВЫПРАЎЛЕННЕ: Вылічаем колькасць мадэляў strictly пасля адсеўкі dummy-класіфікатара
-        n_unique_models = df_scores["Мадэль"].nunique()
-        
-        # Ствараем палітру для мадэляў
+        # 🚨 НАДЗЕЙНАЕ ВЫПРАЎЛЕННЕ: Ствараем палітру ў выглядзе слоўніка-мапы
+        unique_models_list = list(df_scores["Мадэль"].unique())
         custom_colors = [BLUE, TEAL, AMBER, CORAL, LAVENDER, SLATE]
-        active_colors = custom_colors[:n_unique_models] # бярэм дакладную колькасць колераў
+        
+        # Спалучаем імя кожнай мадэлі з яе асабістым колерам
+        model_palette = {model: color for model, color in zip(unique_models_list, custom_colors)}
 
     # -----------------
         # 2. Ствараем фігуру і вось, фарбуем фон фігуры ў BG
@@ -551,30 +561,52 @@ class DataVisualizer:
         ax.set_facecolor(PANEL) # Фон самой рабочай вобласці графіка — белая панэль
         
         # Малюем Box-plot у колерах палітры
+        # sns.boxplot(
+        #     data=df_scores, 
+        #     x="Мадэль", 
+        #     y=metric_name, 
+        #     ax=ax, 
+        #     palette=active_colors,
+        #     hue = "Мадэль",
+        #     legend=False, 
+        #     width=0.4,
+        #     showmeans=True,
+        #     # Налада лініі сярэдняга значэння (ромб колеру INK з белай абводкай)
+        #     meanprops={
+        #         "marker": "D", 
+        #         "markerfacecolor": PANEL, 
+        #         "markeredgecolor": INK, 
+        #         "markersize": 6
+        #     },
+        #     # Налада вусоў і ліній самой скрыні пад колер тэксту INK
+        #     boxprops={"edgecolor": INK, "linewidth": 1.2},
+        #     whiskerprops={"color": INK, "linewidth": 1.2},
+        #     capprops={"color": INK, "linewidth": 1.2},
+        #     medianprops={"color": INK, "linewidth": 1.5}
+        # )
+                # Малюем Box-plot у колерах кастомнай мапы
         sns.boxplot(
             data=df_scores, 
             x="Мадэль", 
             y=metric_name, 
             ax=ax, 
-            palette=active_colors,
-            hue = "Мадэль",
+            palette=model_palette,  # <--- ПЕРАДАЕМ СЛОЎНІК ЗАМЕСТ СПІСУ!
+            hue="Мадэль",
             legend=False, 
             width=0.4,
             showmeans=True,
-            # Налада лініі сярэдняга значэння (ромб колеру INK з белай абводкай)
             meanprops={
                 "marker": "D", 
                 "markerfacecolor": PANEL, 
                 "markeredgecolor": INK, 
                 "markersize": 6
             },
-            # Налада вусоў і ліній самой скрыні пад колер тэксту INK
             boxprops={"edgecolor": INK, "linewidth": 1.2},
             whiskerprops={"color": INK, "linewidth": 1.2},
             capprops={"color": INK, "linewidth": 1.2},
             medianprops={"color": INK, "linewidth": 1.5}
         )
-        
+
         # Накладваем кропкі кожнага фолду (мяккі шэра-сіні SLATE з празрыстасцю)
         sns.stripplot(
             data=df_scores, 
@@ -1460,7 +1492,7 @@ class DataVisualizer:
                 title_text = f"{model_name}\nGap 100%: {gap_100:.4f}"
                 
             ax.set_title(title_text, fontsize=9.5, color=INK, pad=10)
-            ax.set_xlabel('Размер выборки')
+            ax.set_xlabel('Памер выбаркі')
             if i == 0: ax.set_ylabel('PR-AUC')
             
             legend = ax.legend(loc="lower right", frameon=True, facecolor="#FFFFFF", edgecolor=GRID)
@@ -1473,7 +1505,7 @@ class DataVisualizer:
         plt.tight_layout()
         return self._save(fig, filename)
 
-    def plot_correlation_matrix(
+    def plot_pirson_correlation_matrix(
         self, 
         x_train: pd.DataFrame, 
         filename: str = "correlation_matrix.png"
@@ -1520,7 +1552,7 @@ class DataVisualizer:
 
         self.style_ax(
             ax=ax,
-            title="Матрыца карэляцыі лічбавых прыкмет (X_train)",
+            title="Матрыца карэляцыі лічбавых прыкмет",
             xlabel="",
             ylabel=""
         )
@@ -1555,7 +1587,7 @@ class DataVisualizer:
         ax.plot(
             param_range, data["train_mean"],
             color=TEAL, linewidth=2, marker="o", zorder=3,
-            label="Training Score (Трэйн)"
+            label=f"Training Score ({data['verdict']})"
         )
         ax.fill_between(
             param_range, 
@@ -1618,3 +1650,89 @@ class DataVisualizer:
             
         # 7. Захоўваем і вяртаем Path праз твой унутраны метад _save
         return self._save(fig, filename)
+
+    def plot_correlation_matrix(
+        self, 
+        x_train: pd.DataFrame, 
+        filename: str = "correlation_matrix.png"
+    ) -> Path:
+        """
+        Будуе сумесную матрыцу карэляцый (Лікі + Катэгорыі) праз бібліятэку Dython.
+        Выкарыстоўвае Pearson's r, Cramér's V і Correlation Ratio аўтаматычна.
+        """
+        from dython.nominal import associations
+        # import seaborn as sns
+        # import matplotlib.pyplot as plt
+        
+        # Фірмовая каляровая палітра
+        BG, PANEL, INK, INK_SOFT, GRID = '#F3F5F8', '#FFFFFF', '#22303F', '#7A8AA0', '#E3E8EE'
+
+        # 1. Вызначаем спісы прыкмет
+        true_numeric_cols = [
+            "Administrative", "Administrative_Duration", 
+            "Informational", "Informational_Duration", 
+            "ProductRelated", "ProductRelated_Duration",
+            "BounceRates", "ExitRates", "PageValues", "SpecialDay"
+        ]
+        numeric_categorical_cols = ["OperatingSystems", "Browser", "Region", "TrafficType"]
+        ohe_cols = ["VisitorType"]
+        ordinal_cols = ["Month"]
+
+        nominal_features = numeric_categorical_cols + ohe_cols + ordinal_cols
+
+        # 2. Перастрахоўка: бярэм толькі наяўныя прыкметы
+        available_cols = [col for col in (true_numeric_cols + nominal_features) if col in x_train.columns]
+        df_to_plot = x_train[available_cols].copy()
+
+        nominal_features_present = [col for col in nominal_features if col in df_to_plot.columns]
+        for col in nominal_features_present:
+            df_to_plot[col] = df_to_plot[col].astype(str)
+
+        # 3. ЛІЧЫМ КАРЭЛЯЦЫЮ ПРАЗ DYTHON (БЕЗ МАЛЯВАННЯ - plot=False)
+        complete_correlation = associations(
+            dataset=df_to_plot,
+            nominal_columns=nominal_features_present,
+            plot=False,  # <--- ВАЖНА: проста лічым матрыцу ў памяці, не малюем унутры dython
+            compute_only=False,
+            clustering=False
+        )
+        
+        # Дастаем чыстую матрыцу каэфіцыентаў
+        corr_matrix = complete_correlation['corr']
+
+        # 4. СТВАРАЕМ ФІГУРУ САМАСТОЙНА (ТОЛЬКІ АДЗІН РАЗ)
+        fig, ax = plt.subplots(figsize=(12, 10), dpi=100)
+        fig.patch.set_facecolor(BG)
+        ax.set_facecolor(PANEL)
+
+        # Часова змяншаем памер шрыфтоў
+        sns.set_context("notebook", font_scale=0.7)
+
+        # 5. МАЛЮЕМ ПРАЗ SEABORN У НАШ AX
+        sns.heatmap(
+            corr_matrix, 
+            ax=ax, 
+            annot=True, 
+            fmt=".2f", 
+            cmap="coolwarm", 
+            cbar=True,
+            # annotate_over_colors=True
+        )
+        
+        # Скідаем кантэкст шрыфтоў
+        sns.set_context("notebook", font_scale=1.0)
+
+        # 6. Стылізацыя восі
+        ax.set_title("Сумесная матрыца карэляцый (Лічбавыя + Катэгарыяльныя прыкметы)", fontsize=12, color=INK, pad=15)
+        ax.tick_params(axis='x', colors=INK, labelsize=9)
+        ax.tick_params(axis='y', colors=INK, labelsize=9)
+        
+        # Акуратны паварот подпісаў
+        plt.setp(ax.get_xticklabels(), rotation=45, ha="right", rotation_mode="anchor")
+        plt.tight_layout()
+
+        # 7. Бяспечнае захаванне праз ваш унутраны метад
+        output_path = self._save(fig, filename)
+        plt.close(fig)  # Гарантавана зачыняем фігуру
+        
+        return output_path

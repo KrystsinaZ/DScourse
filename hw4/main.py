@@ -1,19 +1,20 @@
-# import warnings
-# # Глушым тэхнічныя папярэджанні ад scikit-learn
-# warnings.filterwarnings("ignore", category=UserWarning, module="sklearn")
-# # Гэты радок цалкам адключае MatplotlibDeprecationWarning
-# warnings.filterwarnings("ignore", category=DeprecationWarning)
+import warnings
+# Глушым стандартны клас папярэджанняў Python
+warnings.filterwarnings("ignore", category=DeprecationWarning)
 
-# # ВЫПРАЎЛЕНА: Глушым абсалютна любыя варнінгі (і UserWarning, і DeprecationWarning), якія ідуць з модуля lightgbm
-# warnings.filterwarnings("ignore", module="lightgbm")
+# Глушым любыя папярэджанні, якія ўтрымліваюць тэкст пра eval_set
+warnings.filterwarnings("ignore", message=".*eval_set.*is deprecated.*")
 
 import gc
-import matplotlib.pyplot as plt
 
+import matplotlib
+
+matplotlib.use('Agg')
+
+import matplotlib.pyplot as plt
 import sys
 import numpy as np
 from pathlib import Path
-
 
 from modules import (
     BayesianTuner,
@@ -50,16 +51,17 @@ def main() -> None:
     print(f"Крыніца даных: {DATA/file_name}")
 
     frame = dataset.load_csv(file_name=file_name)
-    print("Рэальныя калонкі ў frame:", frame.columns.tolist()) 
-    # # Будуем матрыцу карэляцыі для ўсіх прыкмет, выключыўшы таргет "Revenue"
-    # viz.plot_correlation_matrix(x_train=frame.iloc[:, :-1], filename="CM_engin_feat.png")
+    print("Слупкі frame:", frame.columns.tolist()) 
 
+    # # Будуем матрыцу карэляцыі для ўсіх прыкмет, выключыўшы таргет "Revenue"
+    plots_list = []
+    plot_path = viz.plot_correlation_matrix(x_train=frame.iloc[:, :-1], filename="CM_engin_feat.png")
+    plots_list.append(plot_path)
     # # Feature Engineering і Оптымізацыя прыкмет      
     # frame = dataset.engineer_features(frame)
 
     target_name = "Revenue"
-
-    plots_list = []
+    
     plot_path = viz.plot_class_balance(frame[target_name], name=target_name)
     plots_list.append(plot_path)
 
@@ -95,7 +97,7 @@ def main() -> None:
 
     section("4. Classifier на Крос-Валідацыі праз StratifiedKFold(5) ")
 
-    CV_methods_names = ["LogisticRegression", "ExtraTrees", "LightGBM", "XGBoost"]
+    CV_methods_names = ["LogisticRegression", "DecisionTree", "ExtraTrees", "LightGBM", "XGBoost"]
     CV_configs = bench.prepare_final_models(models_to_keep=CV_methods_names)
     
     fold_pr2, fold_roc2, oof_predictions = bench.cross_validate_newV(split.x_cv, split.y_cv, models_conf=CV_configs)
@@ -119,8 +121,6 @@ def main() -> None:
             beta=2.0
         )
     
-    test_probas_dict = {f"{CV_methods_names} (CV-1)": oof_predictions}
-
     df_base_report = evaluator.compile_performance_report(
             y_true=split.y_cv, 
             probas_dict=oof_predictions, 
@@ -129,12 +129,12 @@ def main() -> None:
     print(df_base_report.to_string(index=False))
     
     print("\n[Cross-Validation] Малюем і захоўваем PR-крывую для ўсіх мадэляў") 
-    pr_curve_plot = viz.plot_pr_curve_cv(x=split.x_train, y=split.y_train, models_dict=CV_configs, preprocessor=bench.preprocessor)
-    plots_list.append(pr_curve_plot)
+    plot_path = viz.plot_pr_curve_cv(x=split.x_train, y=split.y_train, models_dict=CV_configs, preprocessor=bench.preprocessor)
+    plots_list.append(plot_path)
     
     print("\n[Cross-Validation] boxplot ") 
-    boxplot = viz.plot_models_boxplot(fold_pr2, metric_name="PR-AUC", filename="models_stability_pr_auc.png")
-    plots_list.append(boxplot)
+    plot_path = viz.plot_models_boxplot(fold_pr2, metric_name="PR-AUC", filename="models_stability_pr_auc.png")
+    plots_list.append(plot_path)
 
     cv_table = evaluator.cv_table(fold_pr2, fold_roc2)
     cv_pr_auc = viz.plot_cv_pr_auc(cv_table)
@@ -154,7 +154,7 @@ def main() -> None:
         for model_name, evals_data in bench.cv_evals_results.items():
             path_early_stopping = viz.plot_boosting_early_stopping(
                 evals_result=evals_data, 
-                filename=f"{model_name.lower()}_cv_early_stopping.png"
+                filename=f"cv_es_{model_name.lower()}.png"
             )
             plots_list.append(path_early_stopping)
     
@@ -163,7 +163,7 @@ def main() -> None:
         for model_name, evals_data in bench.cv_evals_results.items():
             path_train_vs_val = viz.plot_boosting_train_vs_val(
                 evals_result=evals_data, 
-                filename=f"{model_name.lower()}_train_vs_val.png"
+                filename=f"train_vs_val_{model_name.lower()}.png"
             )
             plots_list.append(path_train_vs_val)
 
@@ -198,12 +198,12 @@ def main() -> None:
     
     print("\n[Visualizer] Вылічэнне крывых навучання...")
 
-    LC_methods_names = ["LogisticRegression", "DecisionTrees", "ExtraTrees", "LightGBM", "XGBoost"]
+    LC_methods_names = ["LogisticRegression", "DecisionTree", "ExtraTrees", "LightGBM", "XGBoost"]
     # LC_configs = bench.prepare_final_models(models_to_keep=LC_methods_names)
         
     learning_curves_data_ES = bench.collect_learning_curves_ES(split.x_cv, split.y_cv, LC_methods_names)
     
-    path_es = viz.plot_learning_curves_ES(learning_curves_data_ES, filename="models_learning_curves_ES.png")
+    path_es = viz.plot_learning_curves_ES(learning_curves_data_ES, filename="learning_curves_ES.png")
     plots_list.append(path_es)
         
     print("Параўнальны аналіз перанавучання (БЕЗ Early Stopping vs З УЛІКАМ Early Stopping).")
@@ -219,9 +219,7 @@ def main() -> None:
     
     
     leaves_range = [2, 4, 8, 10, 15, 20, 31]
-    
     # Задаем толькі той дыяпазон лісця, які хочам даследаваць на графіку
-    # leaves_range = [8, 16, 24, 32, 45, 64, 80, 100, 128]
     
     # Вылічэнне ў модулі класіфікатара
     lgbm_results = bench.collect_lgbm_validation_curves(
@@ -231,7 +229,6 @@ def main() -> None:
         param_range=leaves_range,
         base_params={"max_depth": -1}  # Дазваляем лісцю расці #     base_params={}  # - перазапісаць дэфолтны значэнне параметру мадэлі
     )
-    
     
     val_curve_path = viz.plot_validation_curve(curves_results=lgbm_results, model_name="LightGBM", filename="lgbm_leaves_curve.png")
     plots_list.append(val_curve_path)
@@ -243,9 +240,7 @@ def main() -> None:
     
     # Выклікаем адзіны інкапсуляваны метад-менеджэр
     optimized_results = tuner.tune_or_load(best_name, split.x_cv, split.y_cv)
-    # best_name = "XGBoost"
-    # optimized_results = tuner.tune_or_load("XGBoost", split.x_cv, split.y_cv)
-
+    
     print("СПРАВАЗДАЧА ПАДБОРУ ГІПЕРПАРАМЕТРАЎ:")
     for m_name, params in optimized_results.items():
         print(f"Мадэль: {m_name}")
@@ -268,10 +263,8 @@ def main() -> None:
     section("Фінальная валідацыя ")
 
     final_valid_name = [best_name]
-    # final_valid_name = ["XGBoost"]
     final_configs = bench.prepare_final_models(best_name, optimized_results, final_valid_name)
 
-    # 2. Выклікаем крос-валідацыю для супольнага x_cv (без удзелу тэсту!)
     opt_pr, opt_roc, opt_oof = bench.cross_validate_newV(split.x_cv, split.y_cv, models_conf=final_configs)
 
     best_threshold, best_score = evaluator.optimize_threshold_for_fbeta(            
@@ -295,7 +288,7 @@ def main() -> None:
         y_probas=opt_oof[best_name], 
         model_name=best_name,
         threshold=best_threshold,  
-        filename=f"CV_confusion_matrix_{best_name}.png"
+        filename=f"confusion_matrix_CV_{best_name}.png"
     )
     plots_list.append(cm_path)
 
@@ -311,7 +304,6 @@ def main() -> None:
         models_to_keep=final_methods
     )
 
-    # 2. Выклікаем фінальны refit, перадаючы ўжо гатовы слоўнік з мадэлямі
     final_test_pipeline, best_threshold = bench.final_secure_refit(
         final_configs=final_configs,
         x_train=split.x_train,
@@ -321,36 +313,16 @@ def main() -> None:
         evaluator=evaluator
     )
 
-    # best_name = list(optimized_results.keys())[0]
-    
-    # final_test_pipeline = bench.final_secure_refit2(
-    #     model_name=best_name,
-    #     best_params=optimized_results[best_name],
-    #     x_train=split.x_train,
-    #     y_train=split.y_train,
-    #     x_val=split.x_val,
-    #     y_val=split.y_val
-    # )
-        
- 
-
-
     section("Test")
 
-    # КРОК 4.2: Чысты ізаляваны выхад на ТЭСТАВУЮ выбарку з гатовым парогам!
     test_proba, test_pred = bench.predict_with_final_threshold(
             trained_pipeline=final_test_pipeline,
             x_test=split.x_test,
             threshold=best_threshold
         )    
 
-    # --- ЗБОРКА ФІНАЛЬНЫХ ТАБЛІЦ І МАТРЫЦ МЕТРЫК ---
-    
-
     section("Табліца метрык на тэставай выбарцы")
-
-    # print(f"Парог = {best_threshold:.2f}")
-    
+  
     test_probas_dict = {f"{best_name} (Фінальны тэст)": test_proba}
     df_final_test_report = evaluator.compile_performance_report(
         y_true=split.y_test,
@@ -358,25 +330,18 @@ def main() -> None:
         threshold=best_threshold
     )
     print(df_final_test_report.to_string(index=False))
-        # ---------------
-        # Малюем фінальную матрыцу памылак для тэсту з улікам пракачанага парога
+
     final_cm_path = viz.plot_classification_results(
         y_true=split.y_test.to_numpy(),
         y_probas=test_proba, model_name=best_name,
-        threshold=best_threshold, filename=f"final_test_confusion_matrix_{best_name}.png"
+        threshold=best_threshold, filename=f"confusion_matrix_FT_{best_name}.png"
     )
     plots_list.append(final_cm_path)
         
-    # Фінальная важнасць прыкмет
-    # importance_path = viz.plot_feature_importance(
-    #     model_pipeline=final_test_pipeline, 
-    #     model_name=best_name, 
-    #     filename=f"final_test_feature_importance_{best_name}.png"
-    # )
     importance_path = viz.plot_final_feature_importance(
             model_pipeline=final_test_pipeline, 
             model_name=best_name, 
-            filename=f"final_test_feature_importance_{best_name}.png"
+            filename=f"feature_importance_FT_{best_name}.png"
         )
     plots_list.append(importance_path)
     
