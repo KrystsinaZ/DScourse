@@ -1,0 +1,8 @@
+{
+    "CatBoost": {
+        "learning_rate": 0.07950758955007174,
+        "depth": 6,
+        "l2_leaf_reg": 2.413178210159205,
+        "bagging_temperature": 0.742575834452689
+    }
+}
