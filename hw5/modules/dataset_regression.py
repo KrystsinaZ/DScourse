@@ -203,7 +203,7 @@ class PrepareRegressionDataset(PrepareDataset):
         print("| Уласцівасць | Значэнне |")
         print("| :--- | :--- |")
         print(f"| Доля нулявых {target_name} | {share_zero:.2f} % |")
-        print(f"| Skewness / Kurtosis | {skew:.2f} / {kurt:.1f} |")
+        print(f"| Асіметрыя / Эксцэс | {skew:.2f} / {kurt:.1f} |")
         print(f"| Max корреляцыя з прыкметамі | {max_corr_val:.2f} ({max_corr_col}) |")
         print(f"| BounceRates ↔ ExitRates | r = {r_bounce_exit:.2f} |")
         print(f"| ProductRelated ↔ ProductRelated_Duration | r = {r_product_dur:.2f} |")

@@ -1,13 +1,13 @@
 import warnings
 warnings.filterwarnings("ignore", message=".*The argument 'eval_set' is deprecated.*")
-
+warnings.filterwarnings("ignore", message=".*IProgress not found.*")
 
 import sys
 from pathlib import Path
 
 import matplotlib
 matplotlib.use("Agg")
-
+from tqdm import tqdm
 from modules.dataset_regression import PrepareRegressionDataset
 from modules.regressor import RegressorBench
 from modules.regression_evaluation import RegressionEvaluator
