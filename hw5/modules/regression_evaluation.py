@@ -32,6 +32,7 @@ DEFAULT_COMPLEXITY = {
     "LightGBM": 4,
     "XGBoost": 4,
     "CatBoost": 4,
+    "TwoStage": 5,
 }
 
 

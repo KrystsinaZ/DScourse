@@ -17,6 +17,7 @@ BayesianRegressionTuner — аналаг BayesianTuner (tuner.py) для рэг�
 from __future__ import annotations
 
 import json
+from lightgbm import early_stopping as lgb_early_stopping, log_evaluation as lgb_log_evaluation
 import numpy as np
 import optuna
 import pandas as pd
@@ -142,7 +143,8 @@ class BayesianRegressionTuner:
 
         for fold_idx, (train_idx, val_idx) in enumerate(kf.split(x, bins)):
             preprocessor = self.bench._get_adapted_preprocessor(name)
-
+            if name not in self.bench.models:
+                return float("inf")
             reg_model = clone(self.bench.models[name])
             reg_model.set_params(**params)
 
@@ -153,12 +155,11 @@ class BayesianRegressionTuner:
             x_va_trans = preprocessor.transform(x_va)
 
             if "light" in name.lower():
-                from lightgbm import early_stopping, log_evaluation
                 reg_model.fit(
                     x_tr_trans, y_tr,
                     eval_set=[(x_va_trans, y_va)],
                     eval_metric="rmse",
-                    callbacks=[early_stopping(EARLY_STOPPING_ROUNDS, verbose=False), log_evaluation(0)],
+                    callbacks=[lgb_early_stopping(EARLY_STOPPING_ROUNDS, verbose=False), lgb_log_evaluation(0)],
                 )
             elif "xgb" in name.lower():
                 reg_model.set_params(early_stopping_rounds=EARLY_STOPPING_ROUNDS)
@@ -221,21 +222,49 @@ class BayesianRegressionTuner:
             with open(cache_path, "r", encoding="utf-8") as f:
                 return json.load(f)
 
-        matched_key = None
+        # matched_key = None
+        # for pipe_key in self.bench.models.keys():
+        #     if best_name.lower() in pipe_key.lower():
+        #         matched_key = pipe_key
+        #         break
+        # if matched_key is None:
+        #     print(f"[Tuner Warning] Мадэль '{best_name}' не знойдзена ў bench.models.")
+        #     return {}
+
+        # best_hyperparams = self.tune_model(matched_key, x, y)
+        # optimized_results = {matched_key: best_hyperparams}
+
+        # with open(cache_path, "w", encoding="utf-8") as f:
+        #     json.dump(optimized_results, f, indent=4)
+        # print(f"[Tuner Cache] Параметры захаваны ў: {cache_path}")
+
+        # return optimized_results
+
+        matched_key: str | None = None
         for pipe_key in self.bench.models.keys():
-            if best_name.lower() in pipe_key.lower():
+            if pipe_key.lower() == best_name.lower():  
                 matched_key = pipe_key
                 break
-
         if matched_key is None:
-            print(f"[Tuner Warning] Мадэль '{best_name}' не знойдзена ў bench.models.")
-            return {}
+            # Fallback: падстрока, але з папярэджаннем
+            for pipe_key in self.bench.models.keys():
+                if best_name.lower() in pipe_key.lower():
+                    matched_key = pipe_key
+                    print(f"[Warning] Не знойдзена exact match для '{best_name}', выкарыстоўваю '{matched_key}'")
+                    break
 
+        # --- ГЭТЫ БЛОК ВЫПРАЎЛЯЕ ПАМЫЛКУ PYLANCE ---
+        if matched_key is None:
+            print(f"[Tuner Error] Мадэль '{best_name}' цалкам адсутнічае ў bench.models.")
+            return {} 
+
+        # Цяпер Pylance ведае, што matched_key — гэта строга str (не None)
         best_hyperparams = self.tune_model(matched_key, x, y)
-        optimized_results = {matched_key: best_hyperparams}
+        optimized_results: dict[str, Any] = {matched_key: best_hyperparams}
 
         with open(cache_path, "w", encoding="utf-8") as f:
             json.dump(optimized_results, f, indent=4)
         print(f"[Tuner Cache] Параметры захаваны ў: {cache_path}")
 
         return optimized_results
+

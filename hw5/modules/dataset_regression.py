@@ -114,6 +114,10 @@ class PrepareRegressionDataset(PrepareDataset):
             f"CV={len(y_cv)}, test={len(y_test)}"
         )
 
+        # Карысная праверка на выпадак, калі ўсе прыкметы зніклі:
+        if not names:
+            raise ValueError("Няма прыкмет пасля выдалення таргета і ўцечак. Праверце логіку фільтрацыі калонак!")
+
         return SplitResult(
             x_train=x_train, x_val=x_val, x_test=x_test,
             y_train=y_train, y_val=y_val, y_test=y_test,
@@ -197,7 +201,7 @@ class PrepareRegressionDataset(PrepareDataset):
 
         # 3. Вывад гатовай Markdown-табліцы
         print("| Уласцівасць | Значэнне |")
-        print("| :--- | :--- | :--- |")
+        print("| :--- | :--- |")
         print(f"| Доля нулявых {target_name} | {share_zero:.2f} % |")
         print(f"| Skewness / Kurtosis | {skew:.2f} / {kurt:.1f} |")
         print(f"| Max корреляцыя з прыкметамі | {max_corr_val:.2f} ({max_corr_col}) |")

@@ -1,10 +1,8 @@
 """Загрузка датасета, split train/val/test."""
 from __future__ import annotations
 
-import pandas as pd
-
 from typing import NamedTuple
-
+import pandas as pd
 from pathlib import Path
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
@@ -13,7 +11,7 @@ from sklearn.compose import ColumnTransformer
 from sklearn.preprocessing import StandardScaler, OneHotEncoder, OrdinalEncoder
 
 #from typing import Any
-import pandas as pd
+
 
 
 class SplitResult(NamedTuple):
@@ -53,8 +51,17 @@ class PrepareDataset:
         self.file_path = self.data_dir / self.file_name
         
         # Чытаем даныя і захоўваем іх у self, каб яны былі даступныя паўсюль
-        self.df = pd.read_csv(self.file_path)
-        
-        print(f"[LoadDataset] {self.file_name}: {self.df.shape[0]} радкоў x {self.df.shape[1]} слупкоў")
-                
+
+        try:
+            self.df = pd.read_csv(self.file_path)
+        except FileNotFoundError:
+            raise FileNotFoundError(f"Файл не знойдзены: {self.file_path}")
+        except pd.errors.EmptyDataError:
+            raise ValueError(f"Файл пусты: {self.file_path}")
         return self.df
+
+        # self.df = pd.read_csv(self.file_path)
+        
+        # print(f"[LoadDataset] {self.file_name}: {self.df.shape[0]} радкоў x {self.df.shape[1]} слупкоў")
+                
+        # return self.df

@@ -328,18 +328,36 @@ class RegressorBench:
                 log_evaluation(0),
                 record_evaluation(evals),
             ]
-            # Замяняем reg__eval_set на reg__eval_X і reg__eval_y для валідацыйнага сэта.
-            # Калі трэба перадаць менавіта ТЭСТАВЫ/ВАЛІДАЦЫЙНЫ сэт (x_va, y_va):
+            # Перадаем ТОЛЬКІ валідацыйны сэт (адна пара ўнутры спісу)
             pipe.fit(
                 x_train, y_train,
-                reg__eval_X=x_va,
-                reg__eval_y=y_va,
+                reg__eval_set=[(x_va, y_va)], # <-- Толькі адзін картэж (валідацыя)
                 reg__eval_metric="rmse",
                 reg__callbacks=callbacks,
             )
             if record:
                 self.evals_result = evals
             return pipe
+
+        # if name == "LightGBM":
+        #     evals: dict[str, Any] = {}
+        #     callbacks = [
+        #         early_stopping(EARLY_STOPPING_ROUNDS, verbose=False),
+        #         log_evaluation(0),
+        #         record_evaluation(evals),
+        #     ]
+        #     # Замяняем reg__eval_set на reg__eval_X і reg__eval_y для валідацыйнага сэта.
+        #     # Калі трэба перадаць менавіта ТЭСТАВЫ/ВАЛІДАЦЫЙНЫ сэт (x_va, y_va):
+        #     pipe.fit(
+        #         x_train, y_train,
+        #         reg__eval_X=x_va,
+        #         reg__eval_y=y_va,
+        #         reg__eval_metric="rmse",
+        #         reg__callbacks=callbacks,
+        #     )
+        #     if record:
+        #         self.evals_result = evals
+        #     return pipe
 
         # if name == "LightGBM":
         #     evals: dict[str, Any] = {}
@@ -371,12 +389,25 @@ class RegressorBench:
                 # self.evals_result = raw
                 self.evals_result = cast(dict[str, Any], raw)
             return pipe
+        
+        # if name == "XGBoost": # кавалак прапанаваны ківі не сумяшчальны з новымі версіямі бібліятэкі
+        #     reg = pipe.named_steps["reg"]
+        #     pipe.fit(
+        #         x_train, y_train,
+        #         reg__eval_set=[(x_tr, y_tr), (x_va, y_va)],
+        #         reg__early_stopping_rounds=EARLY_STOPPING_ROUNDS,  # ✅ праз fit()
+        #         reg__verbose=False,
+        #     )
+        #     if record and hasattr(reg, "evals_result"):
+        #         raw = reg.evals_result() if callable(reg.evals_result) else reg.evals_result
+        #         self.evals_result = cast(dict[str, Any], raw)
+        #     return pipe
 
         if name == "CatBoost":
             reg = pipe.named_steps["reg"]
             pipe.fit(
                 x_train, y_train,
-                reg__eval_set=(x_va, y_va),
+                reg__eval_set=[(x_va, y_va)], # reg__eval_set=(x_va, y_va),
                 reg__early_stopping_rounds=EARLY_STOPPING_ROUNDS,
                 reg__verbose=False,
             )
@@ -390,6 +421,7 @@ class RegressorBench:
     # ------------------------------------------------------------------ #
     # Крос-валідацыя
     # ------------------------------------------------------------------ #
+
     def cross_validate_newV(
         self,
         x: pd.DataFrame,
@@ -415,7 +447,8 @@ class RegressorBench:
             split_iter_factory = lambda: kf.split(x)
 
         oof_predictions: dict[str, np.ndarray] = {}
-
+  
+     
         for name, template in models_conf.items():
             rmse_scores: list[float] = []
             mae_scores: list[float] = []
@@ -448,18 +481,30 @@ class RegressorBench:
                 rmse_scores.append(float(root_mean_squared_error(y_va_np, preds)))
                 mae_scores.append(float(mean_absolute_error(y_va_np, preds)))
                 r2_scores.append(float(r2_score(y_va_np, preds)))
-
+         
             self.fold_rmse[name] = np.asarray(rmse_scores)
             self.fold_mae[name] = np.asarray(mae_scores)
             self.fold_r2[name] = np.asarray(r2_scores)
-            self.fitted[name] = pipe
+            # self.fitted[name] = pipe
+            # Каб захоўваць усе фолды
+            # self.fitted.setdefault(name, [])
+            # self.fitted[name].append(pipe)
+
             oof_predictions[name] = oof_preds
 
             print(
-                f"     RMSE={self.fold_rmse[name].mean():.4f} ± {self.fold_rmse[name].std():.4f}   "
+                f"RMSE={self.fold_rmse[name].mean():.4f} ± {self.fold_rmse[name].std():.4f}   "
                 f"MAE={self.fold_mae[name].mean():.4f} ± {self.fold_mae[name].std():.4f}   "
                 f"R2={self.fold_r2[name].mean():.4f} ± {self.fold_r2[name].std():.4f}"
             )
+
+            # Праверка ранняга стопу:
+            reg_model = pipe.named_steps['reg']
+            if hasattr(reg_model, 'best_iteration'):
+                print(f"[{name}] Фолд завяршыўся на ітэрацыі: {reg_model.best_iteration}")
+            elif hasattr(reg_model, 'best_iteration_'):
+                print(f"[{name}] Фолд завяршыўся на ітэрацыі: {reg_model.best_iteration_}")
+
 
         return self.fold_rmse, self.fold_mae, self.fold_r2, oof_predictions
 
@@ -524,6 +569,10 @@ class RegressorBench:
         y_val: pd.Series,
     ) -> Any:
         """Поўнае навучанне лепшай мадэлі на x_train, ES-кантроль на x_val."""
+
+        if not final_configs:
+            raise ValueError("final_configs пусты — няма мадэлі для фінальнага навучання.")
+
         model_name = list(final_configs.keys())[0]
         base_model = final_configs[model_name]
         reg_model = clone(base_model)

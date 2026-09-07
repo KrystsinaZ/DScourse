@@ -14,7 +14,11 @@ from modules.regression_evaluation import RegressionEvaluator
 from modules.regression_tuner import BayesianRegressionTuner
 from modules.visualization import DataVisualizer
 
-ROOT = Path(__file__).resolve().parent if "__file__" in locals() else Path.cwd()
+try:
+    ROOT = Path(__file__).resolve().parent
+except NameError:
+    ROOT = Path.cwd()
+
 if str(ROOT) not in sys.path:
     sys.path.append(str(ROOT))
 
