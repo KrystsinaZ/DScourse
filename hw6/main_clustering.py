@@ -120,8 +120,8 @@ def main() -> None:
 
     # ================================================================== #
     section("6. Параўнанне метадаў кластарызацыі")
-    # all_labels = {"KMeans": labels_kmeans, "GMM": labels_gmm, "HDBSCAN": labels_hdbscan}
-    all_labels = {"KMeans": labels_kmeans, "GMM": labels_gmm}
+    all_labels = {"KMeans": labels_kmeans, "GMM": labels_gmm, "HDBSCAN": labels_hdbscan}
+    # all_labels = {"KMeans": labels_kmeans, "GMM": labels_gmm}
 
     comparison_table = evaluator.compile_comparison_table(x, all_labels, fit_times=bench.fit_times_)
     print("\n[Comparison] Табліца метрык якасці кластарызацыі:")

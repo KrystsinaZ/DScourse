@@ -1,3 +1,4 @@
+hdbscan==0.8.44
 matplotlib==3.11.1
 matplotlib-inline==0.2.2
 numpy==2.4.6

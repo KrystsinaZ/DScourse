@@ -6,7 +6,7 @@ import numpy as np
 
 from sklearn.decomposition import PCA
 from sklearn.cluster import KMeans
-from sklearn.cluster import HDBSCAN
+from hdbscan import HDBSCAN
 from sklearn.metrics import silhouette_score
 from sklearn.mixture import GaussianMixture
 
@@ -139,7 +139,12 @@ class ClustererBench:
         
         for size in sizes:
             # Ініцыялізацыя HDBSCAN. Параметр min_samples можна зафіксаваць альбо звязаць з size
-            hdb = HDBSCAN(min_cluster_size=size, min_samples=25, algorithm="brute", copy=True, n_jobs=-1)
+            hdb = HDBSCAN(
+                min_cluster_size=size, 
+                min_samples=25, 
+                algorithm="best",        # let the library choose the fastest
+                core_dist_n_jobs=-1,
+                )
             labels = hdb.fit_predict(x_pca)
             
             # Разлічваем колькасць кластараў (выключаючы шум -1)
@@ -174,8 +179,13 @@ class ClustererBench:
         pca = PCA(n_components=pca_components, random_state=self.random_state)
         x_pca = pca.fit_transform(x)
         
-        # 2. Навучаем фінальны HDBSCAN algorithm="brute"
-        hdb = HDBSCAN(min_cluster_size=min_cluster_size, min_samples=min_samples, algorithm="brute", copy=True, n_jobs=-1)
+        # 2. Навучаем фінальны HDBSCAN 
+        hdb = HDBSCAN(
+            min_cluster_size=min_cluster_size, 
+            min_samples=min_samples, 
+            algorithm="best",        # Няхай бібліятэка абярэ хутчэйшы
+            core_dist_n_jobs=-1,
+            )
         labels = hdb.fit_predict(x_pca)
         
         # Справаздача аб выніках у кансоль
